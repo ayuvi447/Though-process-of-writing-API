@@ -12,6 +12,8 @@ import {
   changePassword,
 } from '../controllers/authControllers.js';
 
+import { upload } from '../middlewares/multer.js';
+
 const Router = express.Router();
 
 // Multer storage setup niche ka setup h normal localstorage m save krne k
@@ -34,15 +36,12 @@ const Router = express.Router();
 
 
 
-const storage = multer.memoryStorage()
 
-const upload = multer({storage})
 
 
 
 // Use multer middleware only for register route
 Router.post('/register', upload.single('photo'), register); // "photo" is the key of form-data file
-
 Router.post('/login', login);
 Router.get('/getusers', isAuth, getUsers);
 Router.post('/logout', isAuth, logOutUser);

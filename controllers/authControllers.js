@@ -1,5 +1,6 @@
 import { User } from "../models/user.modal.js";
 import { validateUpdateData } from "../helperFunctions/validations.js";
+import { uploadOnCloudinary } from "../utils/cloudnary.js";
 import jwt from "jsonwebtoken";
 import nodemailer from "nodemailer";
 import bcrpt from "bcrypt";
@@ -10,13 +11,14 @@ import {
 
 export const register = async (req, res) => {
   const { firstName, lastName, age, gender, password, emailId } = req.body;
-//   const photopath = req.file ? req?.file.path : null //get the file path if uploaded ye tha local m save krne aur db mai file ka path bs store krne k liye ki file ya photo local m kaha save hai 
- 
-  const photoBase64 = req.file ? req.file.buffer.toString('base64') : null
+  //   const photopath = req.file ? req?.file.path : null //get the file path if uploaded ye tha local m save krne aur db mai file ka path bs store krne k liye ki file ya photo local m kaha save hai
+  console.log("req.file = ", req.file);
 
+  const uploadPhoto = req.file ? await uploadOnCloudinary(req.file?.path) : null;
+  const photoUrl = uploadPhoto || null;
+
+  console.log("Uploaded Photo URL:", photoUrl);
   try {
-
-
     validateSignUpUser(req);
 
     const hashedPassword = await bcrpt.hash(password, 10);
@@ -35,20 +37,16 @@ export const register = async (req, res) => {
       password: hashedPassword,
       age,
       gender,
-    //   photo: photopath // ye bs bataiga ki photo kaha upload h uska path jaise ki abi mere local m save h 
-    photo: photoBase64 // real db ma save krne k liye
+      //   photo: photopath // ye bs bataiga ki photo kaha upload h uska path jaise ki abi mere local m save h
+      photo: photoUrl, // real db ma save krne k liye
     });
 
-    console.log(user);
-
     const savedUser = await user.save();
-    const token = await savedUser.getJWT();
-    console.log("token", token);
+    const token = await savedUser.getJWT()
 
     res.cookie("token", token, {
       expires: new Date(Date.now() + 8 * 3600000),
     });
-    console.log(user);
     return res.status(200).json({
       message: "user saved successfully.",
       data: savedUser,
@@ -235,29 +233,28 @@ export const changePassword = async (req, res) => {
   }
 
   try {
-    if(password===newPassword){
-        return res.status(400).json({
-            message:'Old password and new password must be same.'
-        })
+    if (password === newPassword) {
+      return res.status(400).json({
+        message: "Old password and new password must be same.",
+      });
     }
-    
+
     const loggedInUser = req.user;
 
-    const isMatch = await bcrpt.compare(password, loggedInUser.password)
-    if(!isMatch){
-        return res.status(400).json({
-            message: 'password does not match with the old password.'
-        })
+    const isMatch = await bcrpt.compare(password, loggedInUser.password);
+    if (!isMatch) {
+      return res.status(400).json({
+        message: "password does not match with the old password.",
+      });
     }
-    const newHashedPassword = await bcrpt.hash(newPassword, 10)
-    loggedInUser.password = newHashedPassword
+    const newHashedPassword = await bcrpt.hash(newPassword, 10);
+    loggedInUser.password = newHashedPassword;
 
-    await loggedInUser.save()
+    await loggedInUser.save();
 
     return res.status(200).json({
-        message: 'user password changed successfully.'
-    })
-
+      message: "user password changed successfully.",
+    });
   } catch (err) {
     return res.status(401).json({
       message: "cant change password",
